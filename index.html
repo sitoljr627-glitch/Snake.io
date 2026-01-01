@@ -1,119 +1,132 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Snake Game + Score</title>
-<style>
-  body{
-    margin:0;
-    height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:#111;
-    color:white;
-    font-family:Arial;
-    flex-direction:column;
-  }
-
-  canvas{
-    background:#1b1b1b;
-    border:3px solid white;
-  }
-</style>
+  <title>Snake Game</title>
+  <style>
+    body {
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: white;
+      font-family: Arial;
+      flex-direction: column;
+      gap: 10px;
+    }
+    canvas {
+      background: #000;
+      border: 2px solid white;
+    }
+  </style>
 </head>
-
 <body>
 
-<h1>Snake Game</h1>
-<canvas id="gameCanvas" width="400" height="400"></canvas>
+<h2>Snake Game</h2>
+
+<div>
+  Score: <span id="score">0</span> |
+  Highscore: <span id="highscore">0</span>
+</div>
+
+<canvas id="game" width="400" height="400"></canvas>
 
 <script>
-const canvas = document.getElementById("gameCanvas");
+const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let grid = 20;
-let snake = [{x:200, y:200}];
-let dx = grid;
-let dy = 0;
+const scoreText = document.getElementById("score");
+const highscoreText = document.getElementById("highscore");
 
-let food = randomFood();
-
+let box = 20;
 let score = 0;
-let highscore = localStorage.getItem("snakeHighscore") || 0;
+let highscore = localStorage.getItem("snake_highscore") || 0;
+highscoreText.textContent = highscore;
 
-function randomFood(){
-  return {
-    x: Math.floor(Math.random() * (canvas.width / grid)) * grid,
-    y: Math.floor(Math.random() * (canvas.height / grid)) * grid
+let snake = [{ x: 10, y: 10 }];
+let direction = "RIGHT";
+
+let food = {
+  x: Math.floor(Math.random() * 20),
+  y: Math.floor(Math.random() * 20)
+};
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "w" && direction !== "DOWN") direction = "UP";
+  if (e.key === "s" && direction !== "UP") direction = "DOWN";
+  if (e.key === "a" && direction !== "RIGHT") direction = "LEFT";
+  if (e.key === "d" && direction !== "LEFT") direction = "RIGHT";
+});
+
+function resetGame() {
+  if (score > highscore) {
+    highscore = score;
+    localStorage.setItem("snake_highscore", highscore);
+    highscoreText.textContent = highscore;
+  }
+
+  score = 0;
+  scoreText.textContent = score;
+
+  snake = [{ x: 10, y: 10 }];
+  direction = "RIGHT";
+
+  food = {
+    x: Math.floor(Math.random() * 20),
+    y: Math.floor(Math.random() * 20)
   };
 }
 
-let slow = 0;
-function gameLoop(){
-  requestAnimationFrame(gameLoop);
+function gameLoop() {
+  ctx.clearRect(0, 0, 400, 400);
 
-  if(++slow < 6) return;
-  slow = 0;
+  let head = { ...snake[0] };
 
-  ctx.fillStyle = "black";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  if (direction === "UP") head.y--;
+  if (direction === "DOWN") head.y++;
+  if (direction === "LEFT") head.x--;
+  if (direction === "RIGHT") head.x++;
 
-  let head = { x: snake[0].x + dx, y: snake[0].y + dy };
-
-  // nabrak dinding = restart
-  if(head.x < 0 || head.y < 0 || head.x >= canvas.width || head.y >= canvas.height){
+  if (head.x < 0 || head.x >= 20 || head.y < 0 || head.y >= 20) {
     resetGame();
     return;
   }
 
   snake.unshift(head);
 
-  // kalau makan
-  if(head.x === food.x && head.y === food.y){
-    food = randomFood();
-    score++;
-
-    if(score > highscore){
-      highscore = score;
-      localStorage.setItem("snakeHighscore", highscore);
+  // Self Collision
+  for (let i = 1; i < snake.length; i++) {
+    if (snake[i].x === head.x && snake[i].y === head.y) {
+      resetGame();
+      return;
     }
+  }
 
+  // Eat food
+  if (head.x === food.x && head.y === food.y) {
+    score++;
+    scoreText.textContent = score;
+
+    food = {
+      x: Math.floor(Math.random() * 20),
+      y: Math.floor(Math.random() * 20)
+    };
   } else {
     snake.pop();
   }
 
-  // gambar ular
+  // Draw snake
   ctx.fillStyle = "lime";
-  snake.forEach(s => ctx.fillRect(s.x,s.y,grid,grid));
+  snake.forEach(part => {
+    ctx.fillRect(part.x * box, part.y * box, box - 1, box - 1);
+  });
 
-  // gambar makanan
+  // Draw food
   ctx.fillStyle = "red";
-  ctx.fillRect(food.x, food.y, grid, grid);
-
-  // teks score
-  ctx.fillStyle = "white";
-  ctx.font = "20px Arial";
-  ctx.fillText("Score: " + score, 10, 25);
-  ctx.fillText("Highscore: " + highscore, 10, 50);
+  ctx.fillRect(food.x * box, food.y * box, box - 1, box - 1);
 }
 
-function resetGame(){
-  snake = [{x:200, y:200}];
-  dx = grid;
-  dy = 0;
-  food = randomFood();
-  score = 0;
-}
-
-gameLoop();
-
-// kontrol
-window.addEventListener("keydown", e =>{
-  if((e.key === "ArrowUp" || e.key === "w") && dy === 0){ dy = -grid; dx = 0; }
-  if((e.key === "ArrowDown" || e.key === "s") && dy === 0){ dy = grid; dx = 0; }
-  if((e.key === "ArrowLeft" || e.key === "a") && dx === 0){ dx = -grid; dy = 0; }
-  if((e.key === "ArrowRight" || e.key === "d") && dx === 0){ dx = grid; dy = 0; }
-});
+setInterval(gameLoop, 120);
 </script>
 
 </body>
